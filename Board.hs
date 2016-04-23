@@ -4,12 +4,13 @@ module Board
 , cells
 , square
 , squares
-, moves
+, miniIndex
 , update
 , boardWinner
 , boardWon
 , boardDrawn
 , winner
+, wonBy
 , pretty
 , pprint
 , pretty'
@@ -18,6 +19,7 @@ module Board
 import Data.Array.IArray
 import Util.List
 import Data.List(transpose, intercalate)
+import Data.Char(intToDigit)
 
 type Pos = (Int, Int)
 type Cell = Int
@@ -44,17 +46,16 @@ square i brd = [n | n <- assocs brd, (y n) `elem` ys && (x n) `elem` xs]
 squares :: Board -> [[(Pos, Cell)]]
 squares brd = map (\i -> square i brd) [0..8]
 
--- |list of possible moves
-moves :: Board -> [Pos]
-moves brd
-    | boardWon brd || boardDrawn brd = []
-    | otherwise                      = [fst c | c <- playableCells, snd c == 0]
-        where playableCells = concat $ filter (\s -> 0 == winner (map snd s)) $ playableSquares
-              playableSquares = squares brd
+-- |get the index of the cell in the square
+miniIndex :: Pos -> Int
+miniIndex (x, y) = (mod y 3) * 3 + mod x 3
 
 -- |updates one cell
 update :: Pos -> Int -> Board -> Board
-update p v brd = brd // [(p, v)]
+update (x, y) v brd
+    | x > 8 || x < 0 = error ("x out of range: " ++ [intToDigit x])
+    | y > 8 || y < 0 = error ("y out of range: " ++ [intToDigit y])
+    | otherwise = brd // [((x, y), v)]
 
 -- |the winner of the board (or 0)
 boardWinner :: Board -> Int
@@ -68,6 +69,9 @@ boardWon = (/=0) . boardWinner
 boardDrawn :: Board -> Bool
 boardDrawn brd = 0 == freeCells && not (boardWon brd)
     where freeCells = length $ filter (==0) $ cells brd
+
+wonBy :: (Num a, Eq a) => [a] -> a -> Bool
+wonBy xs p = p == winner xs
 
 -- |generic winner checker, can be used for squares
 winner :: (Num a, Eq a) => [a] -> a
@@ -86,7 +90,7 @@ winner xs = player $ filter (full) $ diagonals ys ++ ys ++ columns ys
  --}
 pretty :: Board -> String
 pretty = intercalate divider . map (intercalate "\n") . chunks 3 . rows
-    where rows = map row . chunks 9 . map cell . cells
+    where rows = map row . transpose . chunks 9 . map cell . cells
           row = intercalate " | " . chunks 3
           divider = "\n----+-----+----\n"
           cell 0 = '.'
@@ -99,7 +103,7 @@ pprint = putStrLn . pretty
 
 -- |a one line representation of the board
 pretty' :: Board -> String
-pretty' = map cell . cells
+pretty' = concat . transpose . chunks 9 . map cell . cells
     where cell 0 = '.'
           cell 1 = 'O'
           cell 2 = 'X'

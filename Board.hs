@@ -9,6 +9,7 @@ module Board
 , boardWinner
 , boardWon
 , boardDrawn
+, nInARow
 , winner
 , wonBy
 , pretty
@@ -53,9 +54,10 @@ miniIndex (x, y) = (mod y 3) * 3 + mod x 3
 -- |updates one cell
 update :: Pos -> Int -> Board -> Board
 update (x, y) v brd
-    | x > 8 || x < 0 = error ("x out of range: " ++ [intToDigit x])
-    | y > 8 || y < 0 = error ("y out of range: " ++ [intToDigit y])
-    | otherwise = brd // [((x, y), v)]
+    | x > 8 || x < 0      = error ("x out of range: " ++ [intToDigit x])
+    | y > 8 || y < 0      = error ("y out of range: " ++ [intToDigit y])
+    | 0 /= (brd ! (x, y)) = error ("cell " ++ [intToDigit x, ',', intToDigit y] ++ " already filled")
+    | otherwise           = brd // [((x, y), v)]
 
 -- |the winner of the board (or 0)
 boardWinner :: Board -> Int
@@ -70,6 +72,19 @@ boardDrawn :: Board -> Bool
 boardDrawn brd = 0 == freeCells && not (boardWon brd)
     where freeCells = length $ filter (==0) $ cells brd
 
+-- |checks if there are i numbers in a row with possibility to create a match
+nInARow :: (Num a, Eq a) => [a] -> a -> Int -> Bool
+nInARow xs p i = not $ null $ filter (\s -> i == sum s) $ diagonals ys ++ ys ++ columns ys
+    where
+        ys = chunks 3 $ map norm xs
+        norm c
+            | c == p    = 1
+            | c == 0    = 0
+            | otherwise = -3
+        columns = transpose
+        diagonals [[a, _, b], [_, c, _], [d, _, e]] = [[a, c, e], [d, c, b]]
+
+-- |checks if the specified player won
 wonBy :: (Num a, Eq a) => [a] -> a -> Bool
 wonBy xs p = p == winner xs
 
@@ -77,7 +92,7 @@ wonBy xs p = p == winner xs
 winner :: (Num a, Eq a) => [a] -> a
 winner xs = player $ filter (full) $ diagonals ys ++ ys ++ columns ys
     where
-        ys = chunks 3 $ xs
+        ys = chunks 3 xs
         full [a, b, c] = a == b && b == c && a /= 0
         columns = transpose
         diagonals [[a, _, b], [_, c, _], [d, _, e]] = [[a, c, e], [d, c, b]]

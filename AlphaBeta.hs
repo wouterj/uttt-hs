@@ -12,13 +12,12 @@ module AlphaBeta
 , applyEvaluation
 , bestMoves
 , etprint
+, epretty
 ) where
 
 import Data.Tree(Tree(..), unfoldTree, rootLabel, drawTree)
 import Data.List(sortBy, maximumBy, minimumBy)
 import Data.Ord(comparing)
-
-import Debug.Trace(trace)
 
 import Game
 import Board
@@ -95,7 +94,7 @@ preSort (_, game1) (_, game2)
           choices2 = length $ getActiveSquares game2
 
 mapmax :: (Int, Int) -> Evaluation -> [Evaluation] -> Evaluation
-mapmax _ best [v] = maximumBy (comparing score) [best, v]
+--mapmax _ best [v] = trace (epretty $ maximumBy (comparing score) [best, v]) (maximumBy (comparing score) [best, v])
 mapmax (a, b) best (v:vs)
     | a' >= b                           = v
     | boardFinished $ getBoard $ game v = v
@@ -105,6 +104,7 @@ mapmax (a, b) best (v:vs)
 
 negamax :: Int -> (Int, Int) -> Tree Evaluation -> Evaluation
 negamax color _ (Node eval [])        = updateScore (*color) eval
+--negamax color (a, b) (Node eval subs) | trace (show $ map (epretty) $ map (negamax (-color) ((-b), (-a))) subs) False = undefined
 negamax color (a, b) (Node eval subs) = updateEval eval best
     where mapmax' = mapmax (a, b) ((-100, undefined, undefined))
 --    where mapmax' = maximumBy (comparing score)
@@ -121,6 +121,7 @@ negamax' = updateScore negate . negamax (-1) (-100, 100)
 -- |The best moves calculated
 -- | Searches through deeper levels with a dummy result as head
 bestMoves :: Int -> Tree Evaluation -> [Evaluation]
+--bestMoves _ tree | trace (etpretty $ depthPrune 2 tree) False = undefined
 bestMoves player tree = dummyMove : map (\i -> (nega player) $ depthPrune i tree) (1:[2, 4..])
     where nega 1 = negamax'
           nega 2 = negamax 1 (-20, 20)
@@ -135,8 +136,11 @@ tprint = putStrLn . drawTree . fmap (\(p, game) -> show p ++ " " ++ gpretty' gam
 etprint :: Tree Evaluation -> IO ()
 etprint = putStrLn . drawTree . fmap(\(s, p, g) -> show s ++ " for " ++ show p ++ gpretty' g)
 
+etpretty :: Tree Evaluation -> String
+etpretty = drawTree . fmap(\(s, p, g) -> show s ++ " for " ++ show p ++ gpretty' g)
+
 epretty :: Evaluation -> String
-epretty (score, move, game) = "S: " ++ show score ++ " on " ++ show move ++ "\nBoard:\n" ++ gpretty game
+epretty (score, move, game) = "S: " ++ show score ++ " on " ++ show move-- ++ ": " ++ gpretty' game
 
 eprint :: Evaluation -> IO ()
 eprint = putStrLn . epretty

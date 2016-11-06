@@ -8,7 +8,7 @@ import Data.Tree(Tree, rootLabel)
 
 import Board(Pos, emptyBoard, boardFromString, boardFinished, pretty)
 import Game(Game(..), playSeq, initGame, getBoard, gpretty')
-import AlphaBeta(Evaluation, applyEvaluation, score, move, bestMoves, generateTree', preSort, game, inherit', inherit)
+import AlphaBeta(Evaluation, applyEvaluation, score, move, bestMoves, generateTree', preSort, game, inherit', inherit, epretty)
 
 data GameState = GameState {
     botId :: Int,
@@ -29,7 +29,7 @@ timeoutList timeLimit e es depth = do
         Nothing -> return (move e, score e, depth)
         Just e' -> do
             if (depth > 81)
-                then return (move e', score e', depth)
+                then return (move e, score e, depth)
                 else timeoutList timeLimit e' (tail es) (succ depth)
 
     where toMicrosec timeDiff = (tdSec timeDiff) * 1000000 + fromInteger (tdPicosec timeDiff `div` 1000000)
@@ -45,6 +45,17 @@ settings ["your_botid", i] = do
 settings _ = return ()
 
 update :: [String] -> Context ()
+update ["debug", "field", field, activeStr] = do
+    state <- get
+    let board = boardFromString field
+        activeSquares = splitInts activeStr
+
+    put $ state{ tree = applyEvaluation $ generateTree' preSort $ Game board activeSquares }
+    where splitInts :: String -> [Int]
+          splitInts [] = []
+          splitInts [x] = [read $ x:[]]
+          splitInts (x:_:xs) = (read $ x:[]) : splitInts xs
+
 update ["game", "field", field] = do
     state <- get
     let board = boardFromString field
@@ -59,13 +70,15 @@ action :: [String] -> Context ()
 action ["move", timebank] = do
     state <- get
     time <- liftIO getClockTime
-    let normalDelay = TimeDiff 0 0 0 0 0 0 500000000000
+    let normalDelay = if (read timebank) >= 1000
+                        then TimeDiff 0 0 0 0 0 0 700000000000
+                        else TimeDiff 0 0 0 0 0 0 500000000000
 
     liftIO $ hPutStrLn stderr $ "Current board: " ++ (gpretty' $ game $ rootLabel $ tree state)
 
     ((x, y), score, depth) <- timeoutList (addToClockTime normalDelay time) (undefined, (0,0), undefined) (bestMoves (botId state) $ tree state) 0
     
-    liftIO $ hPutStrLn stderr $ "ID: " ++ show (botId state) ++ "; Score: " ++ show score ++ "; Depth: " ++ show depth ++ "; Move: " ++ show (x, y)
+    liftIO $ hPutStrLn stderr $ "Score: " ++ show score ++ "; Depth: " ++ show depth ++ "; Move: " ++ show (x, y)
     liftIO $ putStrLn $ "place_move " ++ show x ++ " " ++ show y
 
     put $ state{ tree = inherit (x, y) $ tree state }

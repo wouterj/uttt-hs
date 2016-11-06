@@ -94,7 +94,7 @@ preSort (_, game1) (_, game2)
           choices2 = length $ getActiveSquares game2
 
 mapmax :: (Int, Int) -> Evaluation -> [Evaluation] -> Evaluation
---mapmax _ best [v] = trace (epretty $ maximumBy (comparing score) [best, v]) (maximumBy (comparing score) [best, v])
+mapmax _ best [v] = maximumBy (comparing score) [best, v]
 mapmax (a, b) best (v:vs)
     | a' >= b                           = v
     | boardFinished $ getBoard $ game v = v

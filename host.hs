@@ -8,7 +8,7 @@ import Data.Tree(Tree, rootLabel)
 
 import Board(Pos, emptyBoard, boardFromString, boardFinished, pretty)
 import Game(Game(..), playSeq, initGame, getBoard, gpretty')
-import AlphaBeta(Evaluation, applyEvaluation, score, move, bestMoves, generateTree, game, inherit', inherit, epretty)
+import AlphaBeta(Evaluation, applyEvaluation, score, move, bestMoves, dummyMove, generateTree, game, inherit', inherit, epretty)
 
 data GameState = GameState {
     botId :: Int,
@@ -76,7 +76,7 @@ action ["move", timebank] = do
 
     liftIO $ hPutStrLn stderr $ "Current board: " ++ (gpretty' $ game $ rootLabel $ tree state)
 
-    (moves, score, depth) <- timeoutList (addToClockTime normalDelay time) (undefined, []) (bestMoves $ tree state) 0
+    (moves, score, depth) <- timeoutList (addToClockTime normalDelay time) (dummyMove $ tree state) (bestMoves $ tree state) 0
     let (x, y) = head moves
     
     liftIO $ hPutStrLn stderr $ "Score: " ++ show score ++ "; Depth: " ++ show depth ++ "; Moves: " ++ show moves

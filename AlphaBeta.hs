@@ -13,6 +13,7 @@ module AlphaBeta
 , applyEvaluation
 , alpha_beta
 , bestMoves
+, dummyMove
 , etprint
 , epretty
 ) where
@@ -128,10 +129,11 @@ alpha_beta a b (Node (_, move, _) subs)   = (pvv, move:pvm)
 -- |The best moves calculated
 -- | Searches through deeper levels with a dummy result as head
 bestMoves :: Tree Evaluation -> [(Int, [Pos])]
-bestMoves tree = dummy : map (\i -> removeRoot $ alpha_beta (-1000) 1000 $ depthPrune i tree) (1:[2, 4..])
+bestMoves tree = map (\i -> removeRoot $ alpha_beta (-1000) 1000 $ depthPrune i tree) (1:[2, 4..])
     where removeRoot (!score, moves) = (score, tail moves)
-          dummy = (score dummy', [move dummy'])
-          dummy' = rootLabel $ head $ subForest tree
+
+dummyMove tree = (score dummy, [move dummy])
+    where dummy = rootLabel $ head $ subForest tree
 
 {--
  - Debug

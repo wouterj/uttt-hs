@@ -26,10 +26,10 @@ timeoutList timeLimit (prev_score, prev_moves) es depth = do
         else return Nothing
 
     case ex of
-        Nothing -> return (prev_move, prev_score, depth)
+        Nothing -> return (prev_moves, prev_score, depth)
         Just e' -> do
             if (depth > 81)
-                then return (prev_move, prev_score, depth)
+                then return (prev_moves, prev_score, depth)
                 else timeoutList timeLimit e' (tail es) (succ depth)
 
     where toMicrosec timeDiff = (tdSec timeDiff) * 1000000 + fromInteger (tdPicosec timeDiff `div` 1000000)
@@ -76,7 +76,7 @@ action ["move", timebank] = do
 
     liftIO $ hPutStrLn stderr $ "Current board: " ++ (gpretty' $ game $ rootLabel $ tree state)
 
-    (moves, score, depth) <- timeoutList (addToClockTime normalDelay time) (undefined, (0,0), undefined) (bestMoves (botId state) $ tree state) 0
+    (moves, score, depth) <- timeoutList (addToClockTime normalDelay time) (undefined, []) (bestMoves $ tree state) 0
     let (x, y) = head moves
     
     liftIO $ hPutStrLn stderr $ "Score: " ++ show score ++ "; Depth: " ++ show depth ++ "; Moves: " ++ show moves

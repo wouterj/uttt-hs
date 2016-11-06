@@ -8,7 +8,7 @@ import Data.Tree(Tree, rootLabel)
 
 import Board(Pos, emptyBoard, boardFromString, boardFinished, pretty)
 import Game(Game(..), playSeq, initGame, getBoard, gpretty')
-import AlphaBeta(Evaluation, applyEvaluation, score, move, bestMoves, generateTree', preSort, game, inherit', inherit, epretty)
+import AlphaBeta(Evaluation, applyEvaluation, score, move, bestMoves, generateTree, game, inherit', inherit, epretty)
 
 data GameState = GameState {
     botId :: Int,
@@ -17,8 +17,8 @@ data GameState = GameState {
 
 type Context = StateT GameState IO
 
-timeoutList :: ClockTime -> Evaluation -> [Evaluation] -> Int -> Context (Pos, Int, Int)
-timeoutList timeLimit e es depth = do
+timeoutList :: ClockTime -> (Int, [Pos]) -> [(Int, [Pos])] -> Int -> Context ([Pos], Int, Int)
+timeoutList timeLimit (prev_score, prev_moves) es depth = do
     time <- liftIO getClockTime
     ex <- liftIO $ if time < timeLimit
         then do
@@ -26,10 +26,10 @@ timeoutList timeLimit e es depth = do
         else return Nothing
 
     case ex of
-        Nothing -> return (move e, score e, depth)
+        Nothing -> return (prev_move, prev_score, depth)
         Just e' -> do
             if (depth > 81)
-                then return (move e, score e, depth)
+                then return (prev_move, prev_score, depth)
                 else timeoutList timeLimit e' (tail es) (succ depth)
 
     where toMicrosec timeDiff = (tdSec timeDiff) * 1000000 + fromInteger (tdPicosec timeDiff `div` 1000000)
@@ -50,7 +50,7 @@ update ["debug", "field", field, activeStr] = do
     let board = boardFromString field
         activeSquares = splitInts activeStr
 
-    put $ state{ tree = applyEvaluation $ generateTree' preSort $ Game board activeSquares }
+    put $ state{ tree = applyEvaluation $ generateTree $ Game board activeSquares }
     where splitInts :: String -> [Int]
           splitInts [] = []
           splitInts [x] = [read $ x:[]]
@@ -71,14 +71,15 @@ action ["move", timebank] = do
     state <- get
     time <- liftIO getClockTime
     let normalDelay = if (read timebank) >= 1000
-                        then TimeDiff 0 0 0 0 0 0 700000000000
+                        then TimeDiff 0 0 0 0 0 0 850000000000
                         else TimeDiff 0 0 0 0 0 0 500000000000
 
     liftIO $ hPutStrLn stderr $ "Current board: " ++ (gpretty' $ game $ rootLabel $ tree state)
 
-    ((x, y), score, depth) <- timeoutList (addToClockTime normalDelay time) (undefined, (0,0), undefined) (bestMoves (botId state) $ tree state) 0
+    (moves, score, depth) <- timeoutList (addToClockTime normalDelay time) (undefined, (0,0), undefined) (bestMoves (botId state) $ tree state) 0
+    let (x, y) = head moves
     
-    liftIO $ hPutStrLn stderr $ "Score: " ++ show score ++ "; Depth: " ++ show depth ++ "; Move: " ++ show (x, y)
+    liftIO $ hPutStrLn stderr $ "Score: " ++ show score ++ "; Depth: " ++ show depth ++ "; Moves: " ++ show moves
     liftIO $ putStrLn $ "place_move " ++ show x ++ " " ++ show y
 
     put $ state{ tree = inherit (x, y) $ tree state }
@@ -111,4 +112,4 @@ loop = do
     unless eof loop
 
 main = do
-    evalStateT (loop) $ GameState{ botId = 0, tree = applyEvaluation $ generateTree' preSort initGame }
+    evalStateT (loop) $ GameState{ botId = 0, tree = applyEvaluation $ generateTree initGame }

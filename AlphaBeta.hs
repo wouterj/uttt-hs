@@ -10,6 +10,7 @@ module AlphaBeta
 , inherit'
 , depthPrune
 , applyEvaluation
+, alpha_beta
 , bestMoves
 , etprint
 , epretty
@@ -18,6 +19,8 @@ module AlphaBeta
 import Data.Tree(Tree(..), unfoldTree, rootLabel, drawTree)
 import Data.List(sortBy, maximumBy, minimumBy)
 import Data.Ord(comparing)
+
+import Debug.Trace(trace)
 
 import Game
 import Board
@@ -86,46 +89,48 @@ updateRootNode (Node (s, _, g) leafes) = Node (s, (-1,-1), g) leafes
  - Negamax
  --}
 preSort :: (Pos, Game) -> (Pos, Game) -> Ordering
-preSort (_, game1) (_, game2)
-    | (boardWinner $ getBoard game1) /= 0 = LT
-    | (boardWinner $ getBoard game2) /= 0 = GT
+preSort (pos1, game1) (pos2, game2)
+    | (boardWinner $ getBoard game1) /= 0  = LT
+    | (boardWinner $ getBoard game2) /= 0  = GT
+    | isCorner pos1 && (not $ isCorner pos2) = LT
+    | isCorner pos2 && (not $ isCorner pos1) = GT
     | otherwise = compare choices1 choices2
     where choices1 = length $ getActiveSquares game1
           choices2 = length $ getActiveSquares game2
+          isCorner p = p `elem` [(0,0),(0,2),(0,3),(0,5),(0,6),(0,8),(2,0),(2,2),(2,3),(2,5),(2,6),(2,8),(3,0),(3,2),(3,3),(3,5),(3,6),(3,8),(5,0),(5,2),(5,3),(5,5),(5,6),(5,8),(6,0),(6,2),(6,3),(6,5),(6,6),(6,8),(8,0),(8,2),(8,3),(8,5),(8,6),(8,8),(1,1),(1,4),(1,7),(4,1),(4,4),(4,7),(7,1),(7,4),(7,7)]
 
 mapmax :: (Int, Int) -> Evaluation -> [Evaluation] -> Evaluation
 mapmax _ best [v] = maximumBy (comparing score) [best, v]
 mapmax (a, b) best (v:vs)
-    | a' >= b                           = v
+    | a' >= b && trace "prun" True      = v
     | boardFinished $ getBoard $ game v = v
     | otherwise                         = mapmax (a', b) best' vs
     where best' = maximumBy (comparing score) [best, v]
           a' = maximum [a, score v]
 
-negamax :: Int -> (Int, Int) -> Tree Evaluation -> Evaluation
-negamax color _ (Node eval [])        = updateScore (*color) eval
---negamax color (a, b) (Node eval subs) | trace (show $ map (epretty) $ map (negamax (-color) ((-b), (-a))) subs) False = undefined
-negamax color (a, b) (Node eval subs) = updateEval eval best
-    where mapmax' = mapmax (a, b) ((-100, undefined, undefined))
---    where mapmax' = maximumBy (comparing score)
-          best = updateScore negate $ mapmax' $ map (negamax (-color) ((-b), (-a))) subs
-          updateEval (_, (-1,-1), _) b = b
-          updateEval (_, m, g) b       = (score b, m, g)
-
-negamax' :: Tree Evaluation -> Evaluation
-negamax' = updateScore negate . negamax (-1) (-100, 100)
+alpha_beta :: Int -> Int -> Tree Evaluation -> (Int, [Pos])
+alpha_beta _ _ (Node (score, move, _) []) = (score, [move])
+alpha_beta a b (Node (_, move, _) subs)   = (pvv, move:pvm)
+    where (pvv, pvm) = negaLevel (-1000, []) a b subs
+          negaLevel prev_best@(score1, _) prev_a b (x:xs)
+              | score1 < b = negaLevel best4 a b xs
+              where best4 = case neg $ alpha_beta (-b) (-a') x of
+                                value@(score2, _) | (score2 > score1) -> value
+                                                  | otherwise         -> prev_best
+                    a' = maximum [score1, prev_a]
+          negaLevel best _ _ _ = best
+          neg (score, ms) = (-score, ms)
 
 {--
  - Move search
  --}
 -- |The best moves calculated
 -- | Searches through deeper levels with a dummy result as head
-bestMoves :: Int -> Tree Evaluation -> [Evaluation]
---bestMoves _ tree | trace (etpretty $ depthPrune 2 tree) False = undefined
-bestMoves player tree = dummyMove : map (\i -> (nega player) $ depthPrune i tree) (1:[2, 4..])
-    where nega 1 = negamax'
-          nega 2 = negamax 1 (-20, 20)
-          dummyMove = rootLabel $ head $ subForest tree
+bestMoves :: Int -> Tree Evaluation -> [(Int, [Pos])]
+bestMoves player tree = dummy : map (\i -> removeRoot $ alpha_beta (-1000) 1000 $ depthPrune i tree) (1:[2, 4..])
+    where removeRoot (score, moves) = (score, tail moves)
+          dummy = (score dummy', [move dummy'])
+          dummy' = rootLabel $ head $ subForest tree
 
 {--
  - Debug

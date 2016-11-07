@@ -12,6 +12,7 @@ import AlphaBeta(Evaluation, applyEvaluation, score, move, bestMoves, dummyMove,
 
 data GameState = GameState {
     botId :: Int,
+    moveNr :: Int,
     tree :: Tree Evaluation
 } deriving Show
 
@@ -45,6 +46,12 @@ settings ["your_botid", i] = do
 settings _ = return ()
 
 update :: [String] -> Context ()
+update ["game", "move", nr] = do
+    state <- get
+    put $ state{ moveNr = read nr }
+
+    return ()
+
 update ["debug", "field", field, activeStr] = do
     state <- get
     let board = boardFromString field
@@ -60,7 +67,7 @@ update ["game", "field", field] = do
     state <- get
     let board = boardFromString field
 
-    if board == emptyBoard
+    if (moveNr state) == 1
         then return ()
         else put $ state{ tree = inherit' board $ tree state }
 
@@ -112,4 +119,4 @@ loop = do
     unless eof loop
 
 main = do
-    evalStateT (loop) $ GameState{ botId = 0, tree = applyEvaluation $ generateTree initGame }
+    evalStateT (loop) $ GameState{ botId = 0, moveNr = 0, tree = applyEvaluation $ generateTree initGame }

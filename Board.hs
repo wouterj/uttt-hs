@@ -22,38 +22,35 @@ module Board
 , pretty'
 ) where
 
-import Data.Array.IArray
 import Data.List(transpose, intercalate)
-import Data.Char(intToDigit)
+import Data.Char(intToDigit, digitToInt)
 
 type Pos = (Int, Int)
 type Cell = Int
 type Square = [(Pos, Cell)]
-type Board = Array Pos Cell
+type Board = [(Pos, Cell)]
 
 emptyBoard :: Board
-emptyBoard = listArray ((0, 0), (8, 8)) $ repeat 0
+emptyBoard = [((x, y), 0) | x <- [0..8], y <- [0..8]]
 
 boardFromString :: String -> Board
-boardFromString = boardFromString' read
+boardFromString = boardFromString' digitToInt
 
-boardFromString' :: (String -> Int) -> String -> Board
-boardFromString' f = listArray ((0, 0), (8, 8)) . concat . transpose . chunks 9 . map f . wordsWhen (==',')
-    where wordsWhen p s = case dropWhile p s of
-                            "" -> []
-                            s' -> w : wordsWhen p s''
-                                    where (w, s'') = break p s'
+boardFromString' :: (Char -> Int) -> String -> Board
+boardFromString' f board = zip positions $ reverse $ foldl toCell [] board
+    where positions = [(x, y) | y <- [0..8], x <- [0..8]]
+          toCell xs s
+            | s == ','  = xs
+            | otherwise = (f s) : xs
 
 -- |all cells of a board
 cells :: Board -> [Cell]
-cells = elems
+cells = map snd
 
 -- |get a square by index
 square :: Int -> Board -> Square
-square i brd = [n | n <- assocs brd, (y n) `elem` ys && (x n) `elem` xs]
-    where x = fst . fst
-          y = snd . fst
-          minX = (mod i 3) * 3
+square i board = [n | n <- board, (snd $ fst n) `elem` ys && (fst $ fst n) `elem` xs]
+    where minX = (mod i 3) * 3
           xs = take 3 [minX..]
           minY = (quot i 3) * 3
           ys = take 3 [minY..]
@@ -68,15 +65,14 @@ miniIndex (x, y) = (mod y 3) * 3 + mod x 3
 
 -- |updates one cell
 update :: Pos -> Int -> Board -> Board
-update (x, y) v board
-    | x > 8 || x < 0        = error ("x out of range: " ++ show x)
-    | y > 8 || y < 0        = error ("y out of range: " ++ show y)
-    | 0 /= (board ! (x, y)) = error ("cell " ++ [intToDigit x, ',', intToDigit y] ++ " already filled")
-    | otherwise             = board // [((x, y), v)]
+update pos value = foldl update' []
+    where update' xs x
+            | (fst x) == pos = (pos, value) : xs
+            | otherwise      = x : xs
 
 -- |updates one cell, created for easy fold usage
 update' :: Board -> (Pos, Int) -> Board
-update' board cell = board // [cell]
+update' board (pos, value) = update pos value board
 
 -- |the winner of the board (or 0)
 boardWinner :: Board -> Int

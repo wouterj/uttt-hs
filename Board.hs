@@ -3,6 +3,7 @@ module Board
 , emptyBoard
 , boardFromString
 , boardFromString'
+, isEqual
 , cells
 , square
 , squares
@@ -22,8 +23,9 @@ module Board
 , pretty'
 ) where
 
-import Data.List(transpose, intercalate)
+import Data.List(transpose, intercalate, sortBy)
 import Data.Char(intToDigit, digitToInt)
+import Data.Ord(comparing)
 
 type Pos = (Int, Int)
 type Cell = Int
@@ -37,15 +39,18 @@ boardFromString :: String -> Board
 boardFromString = boardFromString' digitToInt
 
 boardFromString' :: (Char -> Int) -> String -> Board
-boardFromString' f board = zip positions $ reverse $ foldl toCell [] board
+boardFromString' f board = zip positions $ foldr toCell [] board
     where positions = [(x, y) | y <- [0..8], x <- [0..8]]
-          toCell xs s
+          toCell s xs
             | s == ','  = xs
             | otherwise = (f s) : xs
 
 -- |all cells of a board
 cells :: Board -> [Cell]
 cells = map snd
+
+isEqual :: Board -> Board -> Bool
+isEqual b1 b2 = (pretty' b1) == (pretty' b2)
 
 -- |get a square by index
 square :: Int -> Board -> Square
@@ -65,7 +70,7 @@ miniIndex (x, y) = (mod y 3) * 3 + mod x 3
 
 -- |updates one cell
 update :: Pos -> Int -> Board -> Board
-update pos value = foldl update' []
+update pos value = reverse . foldl update' []
     where update' xs x
             | (fst x) == pos = (pos, value) : xs
             | otherwise      = x : xs
@@ -126,12 +131,12 @@ winner xs = player $ filter (full) $ diagonals ys ++ ys ++ columns ys
  --}
 pretty :: Board -> String
 pretty = intercalate divider . map (intercalate "\n") . chunks 3 . rows
-    where rows = map row . transpose . chunks 9 . map cell . cells
+    where rows = map row . transpose . chunks 9 . map cell . sortBy (comparing fst)
           row = intercalate " | " . chunks 3
           divider = "\n----+-----+----\n"
-          cell 0 = '.'
-          cell 1 = 'O'
-          cell 2 = 'X'
+          cell (_, 0) = '.'
+          cell (_, 1) = 'O'
+          cell (_, 2) = 'X'
 
 -- |pretty print the board
 pprint :: Board -> IO ()
@@ -139,10 +144,10 @@ pprint = putStrLn . pretty
 
 -- |a one line representation of the board
 pretty' :: Board -> String
-pretty' = concat . transpose . chunks 9 . map cell . cells
-    where cell 0 = '.'
-          cell 1 = 'O'
-          cell 2 = 'X'
+pretty' = concat . transpose . chunks 9 . map cell . sortBy (comparing fst)
+    where cell (_, 0) = '.'
+          cell (_, 1) = 'O'
+          cell (_, 2) = 'X'
 
 chunks :: Int -> [a] -> [[a]]
 chunks _ [] = []

@@ -13,6 +13,7 @@ module AlphaBeta
 , negamax
 , bestMoves
 , dummyMove
+, tprint
 , etprint
 , epretty
 ) where
@@ -77,11 +78,10 @@ inherit mv tree = search mv $ subForest tree
               | otherwise                 = search m ts
 
 inherit' :: Board -> Tree Evaluation -> Tree Evaluation
-inherit' board tree = search board $ subForest tree
-    where search b [] = error "Illegal board"
-          search b (t:ts)
-              | b == (getBoard $ game $ rootLabel t) = updateRootNode t
-              | otherwise                            = search b ts
+inherit' board tree = takeFirst $ dropWhile (not . search) $ subForest tree
+    where search t = board `isEqual` (getBoard $ game $ rootLabel t)
+          takeFirst []    = error "Illegal board"
+          takeFirst (x:_) = x
 
 updateRootNode :: Tree Evaluation -> Tree Evaluation
 updateRootNode (Node (s, _, g) leafes) = Node (s, (-1,-1), g) leafes

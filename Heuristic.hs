@@ -2,7 +2,7 @@ module Heuristic
 ( evaluate
 ) where
 
-import Board(boardWinner, winner, square, squares, nInARow)
+import Board(boardWinner, winner, square, squares, nInARow, boardFinished)
 import Game(Game(..), turn)
 import Debug.Trace(trace)
 
@@ -37,13 +37,14 @@ almostBoardWins game
     where board = map (winner . map snd) $ squares $ getBoard game
 
 activeSquares game
-    | (length squares) > 1 = score * 10
-    | almostSquareWin      = score * 7
-    | otherwise            = 0
+    | (length squares) > 1    = score * 10
+    | almostSquareWin squares = score * 7
+    | otherwise               = 0
     where squares = getActiveSquares game
           board = getBoard game
           nextTurn = turn board
-          almostSquareWin = nInARow (map snd $ square (head squares) board) nextTurn 2
+          almostSquareWin [] = False
+          almostSquareWin ss = nInARow (map snd $ square (head ss) board) nextTurn 2
           score = if 1 == nextTurn
                     then 1
                     else -1

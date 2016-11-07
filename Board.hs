@@ -13,6 +13,7 @@ module Board
 , boardWon
 , boardDrawn
 , boardFinished
+, nInARow'
 , nInARow
 , winner
 , wonBy
@@ -94,17 +95,19 @@ boardDrawn brd = 0 == freeCells && not (boardWon brd)
 boardFinished :: Board -> Bool
 boardFinished board = boardWon board || boardDrawn board
 
+nInARow' :: (Num a, Eq a) => [a] -> a -> Int -> Int
+nInARow' xs p i = length $ filter (\s -> i == sum s) $ diagonals ys ++ ys ++ columns ys
+    where ys = chunks 3 $ map norm xs
+          norm c
+              | c == p    = 1
+              | c == 0    = 0
+              | otherwise = -3
+          columns = transpose
+          diagonals [[a, _, b], [_, c, _], [d, _, e]] = [[a, c, e], [d, c, b]]
+
 -- |checks if there are i numbers in a row with possibility to create a match
-nInARow :: (Num a, Eq a) => [a] -> a -> Int -> Bool
-nInARow xs p i = not $ null $ filter (\s -> i == sum s) $ diagonals ys ++ ys ++ columns ys
-    where
-        ys = chunks 3 $ map norm xs
-        norm c
-            | c == p    = 1
-            | c == 0    = 0
-            | otherwise = -3
-        columns = transpose
-        diagonals [[a, _, b], [_, c, _], [d, _, e]] = [[a, c, e], [d, c, b]]
+nInARow :: (Num a, Eq a, Ord a) => [a] -> a -> Int -> Bool
+nInARow xs p i = 0 < (nInARow' xs p i)
 
 -- |checks if the specified player won
 wonBy :: (Num a, Eq a) => [a] -> a -> Bool

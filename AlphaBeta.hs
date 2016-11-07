@@ -109,29 +109,33 @@ mapmax a b best (v:vs)
     where best' = maximumBy (comparing fst) [best, v]
           a' = maximum [a, fst v]
 
-negamax :: Int -> Int -> Tree Evaluation -> (Int, [Pos])
-negamax _ _ (Node (score, move, _) []) = (score, [move])
-negamax a b (Node (_, move, _) subs)   = (pvv, move:pvm)
+negamax :: Int -> (Int, Int) -> Tree Evaluation -> (Int, [Pos])
+negamax color _ (Node (score, move, _) []) = (color * score, [move])
+negamax color (a, b) (Node (_, move, _) subs)   = (pvv, move:pvm)
     where (pvv, pvm) = negaLevel (-1000, []) a b subs
           negaLevel prev_best@(score1, _) prev_a b (x:xs)
               | score1 < b = negaLevel best4 a b xs
-              where best4 = case neg $ negamax (-b) (-a') x of
+              where best4 = case neg $ negamax (-color) ((-b), (-a')) x of
                                 value@(score2, _) | (score2 > score1) -> value
                                                   | otherwise         -> prev_best
                     a' = maximum [score1, prev_a]
           negaLevel best _ _ _ = best
           neg (score, ms) = (-score, ms)
 
-negamax' :: Tree Evaluation -> (Int, [Pos])
-negamax' = mapmax (-1000) 1000 (-1000, []) . map (negamax (-1000) 1000) . subForest
+negamax' :: Int -> Tree Evaluation -> (Int, [Pos])
+negamax' player = negamax color ((-1000), 1000)
+    where color = if player == 1
+                    then 1
+                    else (-1)
 
 {--
  - Move search
  --}
 -- |The best moves calculated
 -- | Searches through deeper levels with a dummy result as head
-bestMoves :: Tree Evaluation -> [(Int, [Pos])]
-bestMoves tree = map (\i -> negamax' $ depthPrune i tree) (1:[2, 4..])
+bestMoves :: Int -> Tree Evaluation -> [(Int, [Pos])]
+bestMoves player tree = map (\i -> removeDummyRoot $ negamax' player $ depthPrune i tree) (1:[2, 4..])
+    where removeDummyRoot (!s, moves) = (s, tail moves)
 
 dummyMove tree = (score dummy, [move dummy])
     where dummy = rootLabel $ head $ subForest tree

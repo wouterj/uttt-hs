@@ -76,7 +76,7 @@ action ["move", timebank] = do
 
     liftIO $ hPutStrLn stderr $ "Current board: " ++ (gpretty' $ game $ rootLabel $ tree state)
 
-    (moves, score, depth) <- timeoutList (addToClockTime normalDelay time) (dummyMove $ tree state) (bestMoves $ tree state) 0
+    (moves, score, depth) <- timeoutList (addToClockTime normalDelay time) (dummyMove $ tree state) (bestMoves (botId state) $ tree state) 0
     let (x, y) = head moves
     
     liftIO $ hPutStrLn stderr $ "Score: " ++ show score ++ "; Depth: " ++ show depth ++ "; Moves: " ++ show moves

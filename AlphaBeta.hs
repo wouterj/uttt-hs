@@ -79,7 +79,7 @@ inherit mv tree = search mv $ subForest tree
 
 inherit' :: Board -> Tree Evaluation -> Tree Evaluation
 inherit' board tree = takeFirst $ dropWhile (not . search) $ subForest tree
-    where search t = board `isEqual` (getBoard $ game $ rootLabel t)
+    where search t = board == (getBoard $ game $ rootLabel t)
           takeFirst []    = error "Illegal board"
           takeFirst (x:_) = x
 

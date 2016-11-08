@@ -12,6 +12,7 @@ module AlphaBeta
 , applyEvaluation
 , negamax
 , bestMoves
+, quiescense
 , dummyMove
 , tprint
 , etprint
@@ -97,24 +98,48 @@ mapmax a b best (v:vs)
     where best' = maximumBy (comparing fst) [best, v]
           a' = maximum [a, fst v]
 
-negamax :: Int -> Int -> Int -> Tree Evaluation -> (Int, [Pos])
-negamax color _ _ (Node (score, move, _) []) = (color * score, [move])
-negamax color a b (Node (_, move, _) subs)   = (pvv, move:pvm)
+negamax :: Int -> Int -> Int -> Int -> Tree Evaluation -> (Int, [Pos])
+negamax _     color _ _ (Node (score, move, _) [])     = (color * score, [move])
+negamax 0     color a b t@(Node (score, move, game) _) = quiescense color a b t
+negamax depth color a b (Node (_, move, _) subs)       = (pvv, move:pvm)
     where (pvv, pvm) = negaLevel (-1000, []) a b subs
           negaLevel best@(score1, _) a b (x:xs)
               | score1 < b = negaLevel best' a b xs
-              where best' = case neg $ negamax (-color) (-b) (-a') x of
+              where best' = case neg $ negamax (depth-1) (-color) (-b) (-a') x of
                                 value@(score2, _) | (score2 > score1) -> value
                                                   | otherwise         -> best
                     a' = maximum [score1, a]
           negaLevel best _ _ _ = best
           neg (score, ms) = (-score, ms)
 
-negamax' :: Int -> Tree Evaluation -> (Int, [Pos])
-negamax' player = negamax color (-1000) 1000
-    where color = if player == 1
-                    then 1
-                    else (-1)
+negamax' :: Int -> Int -> Tree Evaluation -> (Int, [Pos])
+negamax' depth player = negamax depth color (-1000) 1000
+    where color = if player == 1 then 1 else (-1)
+
+{--
+ - Quiescense search
+ --}
+isNoisyMove :: (Pos, Game) -> Bool
+isNoisyMove (pos, game) = isSquareWin-- || isFreeChoice
+    where isSquareWin = 0 /= (winner $ map snd $ square (squareIndex pos) $ getBoard game)
+          isFreeChoice = (length $ getActiveSquares game) > 1
+
+quiescense :: Int -> Int -> Int -> Tree Evaluation -> (Int, [Pos])
+quiescense color _ _ (Node (score, move, _) [])    = (color * score, [move])
+quiescense color _ _ (Node (score, move, game) _)
+    | not $ isNoisyMove (move, game)               = (color * score, [move])
+quiescense color a b (Node (_, move, _) subs)      = (pvv, move:pvm)
+    where (pvv, pvm) = negaLevel (-1000, []) a b subs
+          negaLevel best@(score1, _) a b (x:xs)
+              | score1 < b = negaLevel best' a b xs
+              where best'
+                        | (score $ rootLabel x) >= b = best
+                        | otherwise = case neg $ quiescense (-color) (-b) (-a') x of
+                                            value@(score2, _) | (score2 > score1) -> value
+                                                              | otherwise         -> best
+                    a' = maximum [score1, a]
+          negaLevel best _ _ _ = best
+          neg (score, ms) = (-score, ms)
 
 {--
  - Move search
@@ -122,7 +147,7 @@ negamax' player = negamax color (-1000) 1000
 -- |The best moves calculated
 -- | Searches through deeper levels with a dummy result as head
 bestMoves :: Int -> Tree Evaluation -> [(Int, [Pos])]
-bestMoves player tree = map (\i -> removeDummyRoot $ negamax' player $ depthPrune i tree) (1:[2, 4..])
+bestMoves player tree = map (\i -> removeDummyRoot $ negamax' i player tree) ([2, 4..])
     where removeDummyRoot (!s, moves) = (s, tail moves)
 
 dummyMove tree = (score dummy, [move dummy])

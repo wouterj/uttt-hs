@@ -7,6 +7,7 @@ module Board
 , square
 , squares
 , miniIndex
+, squareIndex
 , update
 , update'
 , boardWinner
@@ -65,6 +66,10 @@ squares brd = map (\i -> square i brd) [0..8]
 -- |get the index of the cell in the square
 miniIndex :: Pos -> Int
 miniIndex (x, y) = (mod y 3) * 3 + mod x 3
+
+-- |get the square index of the cell
+squareIndex :: Pos -> Int
+squareIndex (x, y) = 3 * (y `div` 3) + (x `div` 3)
 
 -- |updates one cell
 update :: Pos -> Int -> Board -> Board

@@ -102,7 +102,7 @@ negamax :: Int -> Int -> Int -> Int -> Tree Evaluation -> (Int, [Pos])
 negamax _     color _ _ (Node (score, move, _) [])     = (color * score, [move])
 negamax 0     color a b t@(Node (score, move, game) _) = quiescense color a b t
 negamax depth color a b (Node (_, move, _) subs)       = (pvv, move:pvm)
-    where (pvv, pvm) = negaLevel (-1000, []) a b subs
+    where (pvv, pvm) = negaLevel (-10000, []) a b subs
           negaLevel best@(score1, _) a b (x:xs)
               | score1 < b = negaLevel best' a b xs
               where best' = case neg $ negamax (depth-1) (-color) (-b) (-a') x of

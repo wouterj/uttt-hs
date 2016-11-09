@@ -134,9 +134,10 @@ pretty = intercalate divider . map (intercalate "\n") . chunks 3 . rows
     where rows = map row . transpose . chunks 9 . map cell . cells
           row = intercalate " | " . chunks 3
           divider = "\n----+-----+----\n"
-          cell 0 = '.'
-          cell 1 = 'O'
-          cell 2 = 'X'
+          cell (-1) = '_'
+          cell 0    = '.'
+          cell 1    = 'O'
+          cell 2    = 'X'
 
 -- |pretty print the board
 pprint :: Board -> IO ()

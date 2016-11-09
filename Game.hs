@@ -67,10 +67,18 @@ moves game
  - Debug
  --}
 gpretty :: Game -> String
-gpretty = pretty . getBoard
+gpretty (Game board activeSquares) = pretty $ foldl markActive board' $ map (\i -> square i board) activeSquares
+    where board' = foldl updateSquare board $ squares board
+          updateSquare b s
+            | (winner $ map snd s) /= 0 = foldl (fillWinner (winner $ map snd s)) b s
+            | otherwise                 = b
+          fillWinner w b (p, _) = update p w b
+          markActive b s = foldl markActive' b s
+          markActive' b (p, 0) = update p (-1) b
+          markActive' b c      = b
 
 gpretty' :: Game -> String
 gpretty' = pretty' . getBoard
 
 gpprint :: Game -> IO ()
-gpprint = pprint . getBoard
+gpprint = putStrLn . gpretty

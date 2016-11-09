@@ -100,7 +100,9 @@ mapmax a b best (v:vs)
 
 negamax :: Int -> Int -> Int -> Int -> Tree Evaluation -> (Int, [Pos])
 negamax _     color _ _ (Node (score, move, _) [])     = (color * score, [move])
-negamax 0     color a b t@(Node (score, move, game) _) = quiescense color a b t
+negamax 0     color a b t@(Node (score, move, game) _)
+    | isNoisyMove (move, game) = quiescense color a b t
+    | otherwise                = (color * score, [move])
 negamax depth color a b (Node (_, move, _) subs)       = (pvv, move:pvm)
     where (pvv, pvm) = negaLevel (-10000, []) a b subs
           negaLevel best@(score1, _) a b (x:xs)
@@ -129,7 +131,7 @@ quiescense color _ _ (Node (score, move, _) [])    = (color * score, [move])
 quiescense color _ _ (Node (score, move, game) _)
     | not $ isNoisyMove (move, game)               = (color * score, [move])
 quiescense color a b (Node (_, move, _) subs)      = (pvv, move:pvm)
-    where (pvv, pvm) = negaLevel (-1000, []) a b subs
+    where (pvv, pvm) = negaLevel (neg (-10000, [])) a b (filter isNoisyMove' subs)
           negaLevel best@(score1, _) a b (x:xs)
               | score1 < b = negaLevel best' a b xs
               where best'
@@ -140,6 +142,7 @@ quiescense color a b (Node (_, move, _) subs)      = (pvv, move:pvm)
                     a' = maximum [score1, a]
           negaLevel best _ _ _ = best
           neg (score, ms) = (-score, ms)
+          isNoisyMove' (Node (_, move, game) _) = isNoisyMove (move, game)
 
 {--
  - Move search

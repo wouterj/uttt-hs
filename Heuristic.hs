@@ -14,8 +14,8 @@ evaluate game
     | otherwise          = foldl (\score h -> score + (h game)) 0 [squareWins, almostSquareWins, almostBoardWins, activeSquares, middleSquareCells]
 
 boardWin game
-    | winner == 1 = 100
-    | winner == 2 = -100
+    | winner == 1 = 500
+    | winner == 2 = -500
     | otherwise   = 0
     where winner = boardWinner $ getBoard game
 
